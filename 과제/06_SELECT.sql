@@ -1,68 +1,60 @@
---ë¬¸ì œ1 ê¸°ìˆ ì§€ì›ë¶€ì— ì†í•œ ì‚¬ëžŒë“¤ì˜ ì‚¬ëžŒì˜ ì´ë¦„,ë¶€ì„œì½”ë“œ,ê¸‰ì—¬ë¥¼ ì¶œë ¥í•˜ì‹œì˜¤. 
+--¹®Á¦1 ±â¼úÁö¿øºÎ¿¡ ¼ÓÇÑ »ç¶÷µéÀÇ »ç¶÷ÀÇ ÀÌ¸§,ºÎ¼­ÄÚµå,±Þ¿©¸¦ Ãâ·ÂÇÏ½Ã¿À. 
 SELECT *
 FROM(
     SELECT EMP_NAME,DEPT_CODE,SALARY
     FROM EMPLOYEE
         JOIN DEPARTMENT ON DEPT_CODE=DEPT_ID  
-        WHERE DEPT_TITLE = 'ê¸°ìˆ ì§€ì›ë¶€'
+        WHERE DEPT_TITLE = '±â¼úÁö¿øºÎ'
 );
---ë¬¸ì œ2
---ê¸°ìˆ ì§€ì›ë¶€ì— ì†í•œ ì‚¬ëžŒë“¤ ì¤‘ ê°€ìž¥ ì—°ë´‰ì´ ë†’ì€ ì‚¬ëžŒì˜ ì´ë¦„,ë¶€ì„œì½”ë“œ,ê¸‰ì—¬ë¥¼ ì¶œë ¥í•˜ì‹œì˜¤
+--¹®Á¦2
+--±â¼úÁö¿øºÎ¿¡ ¼ÓÇÑ »ç¶÷µé Áß °¡Àå ¿¬ºÀÀÌ ³ôÀº »ç¶÷ÀÇ ÀÌ¸§,ºÎ¼­ÄÚµå,±Þ¿©¸¦ Ãâ·ÂÇÏ½Ã¿À
 SELECT *
 FROM(
     SELECT EMP_NAME,DEPT_CODE,SALARY
     FROM EMPLOYEE
         JOIN DEPARTMENT ON DEPT_CODE=DEPT_ID  
-        WHERE DEPT_TITLE = 'ê¸°ìˆ ì§€ì›ë¶€'
+        WHERE DEPT_TITLE = '±â¼úÁö¿øºÎ'
         ORDER BY SALARY DESC
 )
 WHERE ROWNUM = 1;
 
---ë¬¸ì œ3
---ë§¤ë‹ˆì €ê°€ ìžˆëŠ” ì‚¬ì›ì¤‘ì— ì›”ê¸‰ì´ ì „ì²´ì‚¬ì› í‰ê· ì„ ë„˜ê³  
---ì‚¬ë²ˆ,ì´ë¦„,ë§¤ë‹ˆì € ì´ë¦„, ì›”ê¸‰ì„ êµ¬í•˜ì‹œì˜¤. 
---1. JOINì„ ì´ìš©í•˜ì‹œì˜¤
+--¹®Á¦3
+--¸Å´ÏÀú°¡ ÀÖ´Â »ç¿øÁß¿¡ ¿ù±ÞÀÌ ÀüÃ¼»ç¿ø Æò±ÕÀ» ³Ñ°í 
+--»ç¹ø,ÀÌ¸§,¸Å´ÏÀú ÀÌ¸§, ¿ù±ÞÀ» ±¸ÇÏ½Ã¿À. 
+--1. JOINÀ» ÀÌ¿ëÇÏ½Ã¿À
 SELECT E.EMP_ID,E.EMP_NAME,M.EMP_NAME,E.SALARY
 FROM EMPLOYEE E
     JOIN EMPLOYEE M ON M.EMP_ID=E.MANAGER_ID
 WHERE E.SALARY>(SELECT AVG(SALARY) FROM EMPLOYEE);
---2. JOINí•˜ì§€ ì•Šê³ , ìŠ¤ì¹¼ë¼ìƒê´€ì¿¼ë¦¬(SELECT)ë¥¼ ì´ìš©í•˜ê¸°
+--2. JOINÇÏÁö ¾Ê°í, ½ºÄ®¶ó»ó°üÄõ¸®(SELECT)¸¦ ÀÌ¿ëÇÏ±â
 SELECT E.EMP_ID,E.EMP_NAME,(SELECT EMP_NAME FROM EMPLOYEE WHERE EMP_ID = E.MANAGER_ID),E.SALARY
 FROM EMPLOYEE E
 WHERE MANAGER_ID IS NOT NULL AND E.SALARY>(SELECT AVG(SALARY) FROM EMPLOYEE);
 
---ë¬¸ì œ4
---ê°™ì€ ì§ê¸‰ì˜ í‰ê· ê¸‰ì—¬ë³´ë‹¤ ê°™ê±°ë‚˜ ë§Žì€ ê¸‰ì—¬ë¥¼ ë°›ëŠ” ì§ì›ì˜ ì´ë¦„, ì§ê¸‰ì½”ë“œ, ê¸‰ì—¬, ê¸‰ì—¬ë“±ê¸‰ ì¡°íšŒ
+--¹®Á¦4
+--°°Àº Á÷±ÞÀÇ Æò±Õ±Þ¿©º¸´Ù °°°Å³ª ¸¹Àº ±Þ¿©¸¦ ¹Þ´Â Á÷¿øÀÇ ÀÌ¸§, Á÷±ÞÄÚµå, ±Þ¿©, ±Þ¿©µî±Þ Á¶È¸
 SELECT EMP_NAME,DEPT_CODE,SALARY,SAL_LEVEL
 FROM EMPLOYEE E
 WHERE SALARY>=(SELECT AVG(SALARY) FROM EMPLOYEE M WHERE E.DEPT_CODE = M.DEPT_CODE);
 
---ë¬¸ì œ5
---ë¶€ì„œë³„ í‰ê·  ê¸‰ì—¬ê°€ 2200000 ì´ìƒì¸ ë¶€ì„œëª…, í‰ê·  ê¸‰ì—¬ ì¡°íšŒ
---ë‹¨, í‰ê·  ê¸‰ì—¬ëŠ” ì†Œìˆ˜ì  ë²„ë¦¼, ë¶€ì„œëª…ì´ ì—†ëŠ” ê²½ìš° 'ì¸í„´'ì²˜ë¦¬
-SELECT NVL(DEPT_TITLE,'ì¸í„´'),FLOOR(AVG(SALARY))AS í‰ê· ê¸‰ì—¬
+--¹®Á¦5
+--ºÎ¼­º° Æò±Õ ±Þ¿©°¡ 2200000 ÀÌ»óÀÎ ºÎ¼­¸í, Æò±Õ ±Þ¿© Á¶È¸
+--´Ü, Æò±Õ ±Þ¿©´Â ¼Ò¼öÁ¡ ¹ö¸², ºÎ¼­¸íÀÌ ¾ø´Â °æ¿ì 'ÀÎÅÏ'Ã³¸®
+SELECT NVL(DEPT_TITLE,'ÀÎÅÏ'),FLOOR(AVG(SALARY))AS Æò±Õ±Þ¿©
 FROM EMPLOYEE
     LEFT JOIN DEPARTMENT ON DEPT_CODE=DEPT_ID
 GROUP BY DEPT_TITLE
 HAVING AVG(SALARY)>=2200000;
 
---ë¬¸ì œ6
---ì§ê¸‰ì˜ ì—°ë´‰ í‰ê· ë³´ë‹¤ ì ê²Œ ë°›ëŠ” ì—¬ìžì‚¬ì›ì˜
---ì‚¬ì›ëª…,ì§ê¸‰ëª…,ë¶€ì„œëª…,ì—°ë´‰ì„ ì´ë¦„ ì˜¤ë¦„ì°¨ìˆœìœ¼ë¡œ ì¡°íšŒí•˜ì‹œì˜¤
---ì—°ë´‰ ê³„ì‚° => (ê¸‰ì—¬+(ê¸‰ì—¬*ë³´ë„ˆìŠ¤))*12    
--- ì‚¬ì›ëª…,ì§ê¸‰ëª…,ë¶€ì„œëª…,ì—°ë´‰ì€ EMPLOYEE í…Œì´ë¸”ì„ í†µí•´ ì¶œë ¥ì´ ê°€ëŠ¥í•¨  
+--¹®Á¦6
+--Á÷±ÞÀÇ ¿¬ºÀ Æò±Õº¸´Ù Àû°Ô ¹Þ´Â ¿©ÀÚ»ç¿øÀÇ
+--»ç¿ø¸í,Á÷±Þ¸í,ºÎ¼­¸í,¿¬ºÀÀ» ÀÌ¸§ ¿À¸§Â÷¼øÀ¸·Î Á¶È¸ÇÏ½Ã¿À
+--¿¬ºÀ °è»ê => (±Þ¿©+(±Þ¿©*º¸³Ê½º))*12    
+-- »ç¿ø¸í,Á÷±Þ¸í,ºÎ¼­¸í,¿¬ºÀÀº EMPLOYEE Å×ÀÌºíÀ» ÅëÇØ Ãâ·ÂÀÌ °¡´ÉÇÔ 
 SELECT EMP_NAME,DEPT_TITLE,JOB_NAME,(SALARY+(SALARY*NVL(BONUS,0)))*12
 FROM EMPLOYEE 
-    JOIN DEPARTMENT ON DEPT_ID=DEPT_CODE
+   LEFT  JOIN DEPARTMENT ON DEPT_ID=DEPT_CODE
     JOIN JOB USING (JOB_CODE)
 WHERE  SUBSTR(EMP_NO,8,1) IN ('2','4')AND (SALARY+(SALARY*NVL(BONUS,0)))*12 
-<(SELECT AVG((SALARY+(SALARY*NVL(BONUS,0)))*12)FROM EMPLOYEE WHERE DEPT_CODE=DEPT_ID)
-ORDER BY EMP_NAME;    
-
-
-
-    
-
-
-
-
+<(SELECT AVG((SALARY+(SALARY*NVL(BONUS,0)))*12)FROM EMPLOYEE)
+ORDER BY EMP_NAME; 
