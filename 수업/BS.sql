@@ -2347,29 +2347,703 @@ COMMIT;
 
 -- ORACLE에서 제공하는 OBJECT활용하기
 -- USER, TABLE, VIEW, SEQUENCE, INDEX, SYNONYM, FUNCTION, PROCEDURE, PACKAGE 등등
-CREATE TABLE EMP_M1
+
+-- VIEW에 대해 알아보자
+-- SELECT 문의 결과 RESULT SET 을 하나의 테이블처럼 활용하게 하는것을 VIEW라고한다.
+-- STORE VIEW 생성하기
+-- CREATE [옵션] VIEW VIEW 명칭 AS SELECT문
+
+--VIEW테이블을 생성할수있는 권한이없다
+--권한을 부여해줘야 생성가능
+CREATE VIEW V_EMP
+AS SELECT * FROM EMPLOYEE JOIN DEPARTMENT ON DEPT_CODE=DEPT_ID;
+
+-- VIEW를 생성할 권한 부여
+--SYSTEM/ SYS AS SYSDBA(최고관리자계정) 계정으로 부여를한다.
+GRANT CREATE VIEW TO BS;
+
+CREATE VIEW V_EMP
+AS SELECT * FROM EMPLOYEE JOIN DEPARTMENT ON DEPT_CODE=DEPT_ID;
+
+-- 생성된 VIEW테이블 이용하기
+SELECT * FROM V_EMP;
+
+-- 부서별 직책별 급여의 평균을 구하는 SELECT문
+SELECT DEPT_CODE,AVG(SALARY) FROM EMPLOYEE GROUP BY DEPT_CODE;
+SELECT JOB_CODE, AVG(SALARY) FROM EMPLOYEE GROUP BY JOB_CODE;
+
+-- 위에 두개를 한번에 조회하기 UNION사용
+SELECT DEPT_CODE, AVG(SALARY) FROM EMPLOYEE GROUP BY DEPT_CODE
+UNION
+SELECT JOB_CODE, AVG(SALARY)FROM EMPLOYEE GROUP BY JOB_CODE;
+
+
+-- VIEW테이블을 만들엇을때 AVG같은 컬럼명은 이상하기떄문에 
+-- 별칭을 정해줘야한다.
+CREATE VIEW V_AVG_DEPTJOB
+AS 
+SELECT DEPT_CODE, AVG(SALARY) AS AVG_SALARY FROM EMPLOYEE GROUP BY ROLLUP(DEPT_CODE)
+UNION
+SELECT JOB_CODE, AVG(SALARY)FROM EMPLOYEE GROUP BY ROLLUP(JOB_CODE);
+
+
+SELECT * FROM V_AVG_DEPTJOB
+WHERE AVG_SALARY >= 3000000  AND DEPT_CODE IS NOT NULL;
+
+--VIEW 테이블을 조회
+SELECT * FROM USER_VIEWS;
+
+-- VIEW에 특징
+-- DML구문은 사용이 가능하니??
+-- 실제테이블과 연결되어있는 컬럼을 수정할때는 가능하다. 
+-- 가상컬럼은 수정이 불가능하다.
+
+-- VIEW테이블로 실제연결되어 있으면은 수정이가능하다.
+SELECT * FROM V_EMP;
+UPDATE V_EMP SET EMP_NAME = '최주영' WHERE EMP_NAME = '월드컵';
+SELECT * FROM EMPLOYEE;
+
+-- AVG_SALARY는 가상컬럼이기때문에 수정이불가능하다.
+UPDATE V_AVG_DEPTJOB SET AVG_SALARY = 1000000;
+
+-- 단일 테이블로 만들어진 VIEW는 INSERT가 가능하다.,
+--  VIEW에서 값을 넣은것 이외에 컬럼에는 NULL값을 삽입한다. -> NOT NULL 제약조건이 설정되면 안된다.
+CREATE VIEW V_EMPTEST
+AS SELECT EMP_ID, EMP_NO, EMP_NAME, EMAIL, PHONE, JOB_CODE, SAL_LEVEL FROM EMPLOYEE;
+SELECT * FROM V_EMPTEST;
+-- VIEW테이블에 대상으로 INSERT로 넣을수있다.
+--실질적인 테이블도 변경된다. 지정하지않은 값들은 NULL로 들어간다.
+INSERT INTO V_EMPTEST VALUES('997','981011-1234123','홍길동','HONG@HONG.COM','12341234','J1','S1');
+
+-- JOIN , UNION연결된 VIEW는 입력이 불가능하다.
+--JOIN을 사용한 VIEW는 INSERT가 불가능함.
+INSERT INTO V_EMP VALUES('999','홍길동','980110-1234567','HONG@HONG.COM','12345','D5','J1','S1',
+100,0.2,206,SYSDATE,NULL,'N','D0','되니','L3');
+
+-- DELETE문은 가능한가?
+DELETE FROM V_EMPTEST WHERE EMP_ID = '997';
+SELECT * FROM EMPLOYEE;
+DELETE FROM V_EMP WHERE EMP_NAME = '옛사람';
+
+-- VIEW생성시 사용할 수 있는 옵션
+-- 1. OR REPLACE : 중복되는 VIEW이름이 있으면 덮어쓰기를 해주는 옵션.
+-- * OBJECT명칭은 중복이 불가능하다.
+CREATE OR REPLACE VIEW V_EMP
 AS SELECT * FROM EMPLOYEE;
-CREATE TABLE EMP_M2
-AS SELECT * FROM EMPLOYEE WHERE JOB_CODE='J4';
+SELECT * FROM V_EMP;
 
-INSERT INTO EMP_M2 VALUES(999,'곽두원','561014-123456','KWACK@DF.COM','01021314123','D5','J1','S1',90000,0.5,
-    NULL,SYSDATE,DEFAULT,DEFAULT);
-UPDATE EMP_M2 SET SALARY=0;
-COMMIT;
-SELECT * FROM EMP_M1;
-SELECT * FROM EMP_M2;
+-- FORCE/NOFORCE : 실제 테이블이 존재하지않아도 VIEW생성할 수 있게 해주는 옵션.
+-- 테이블이없어도 일단만들어준다VIEW를
+SELECT * FROM TT;
+CREATE  FORCE  VIEW V_TT
+AS SELECT * FROM TT;
 
-MERGE INTO EMP_M1 USING EMP_M2 ON(EMP_M1.EMP_ID=EMP_M2.EMP_ID)
-WHEN MATCHED THEN
-    UPDATE SET
-        EMP_M1.SALARY=EMP_M2.SALARY
-WHEN NOT MATCHED THEN
-    INSERT VALUES(EMP_M2.EMP_ID,EMP_M2.EMP_NAME,EMP_M2.EMP_NO,EMP_M2.EMAIL,EMP_M2.PHONE,
-        EMP_M2.DEPT_CODE,EMP_M2.JOB_CODE,EMP_M2.SAL_LEVEL,EMP_M2.SALARY,EMP_M2.BONUS,
-        EMP_M2.MANAGER_ID,
-        EMP_M2.HIRE_DATE,EMP_M2.ENT_DATE,EMP_M2.ENT_YN);
+SELECT * FROM V_TT;
+
+-- 나중에 테이블을 만들어서 VIEW를 조회하면 죄회가된다.
+CREATE TABLE TT(
+    TTNO NUMBER,
+    TTNAME VARCHAR2(200)
+);    
+
+SELECT * FROM V_TT;
+
+-- WITH CHECK OPTION : SELECT문의 WHERE절에 사용한 컬럼은 수정하지 못하게 만드는 옵션.
+CREATE OR REPLACE VIEW V_CHECK
+AS SELECT EMP_ID, EMP_NAME, SALARY, DEPT_CODE
+FROM EMPLOYEE
+WHERE DEPT_CODE='D5' WITH CHECK OPTION;
+
+SELECT * FROM V_CHECK;
+-- WHERE 의 기준이되는 애는 WITH CHECK OPTION 으로인해 수정이불가능
+UPDATE V_CHECK SET DEPT_CODE  = 'D6' WHERE EMP_NAME='하이유';
+-- WHERE절이 아닌 다른컬럼들은 수정이가능하다.
+UPDATE V_CHECK SET EMP_NAME  = '김재훈' WHERE EMP_NAME='하이유';
+
+ROLLBACK;
+
+-- WITH READ ONLY : VIEW 테이블에서 수정을 불가능하게 하는 옵션 -> 읽기전용
+CREATE OR REPLACE VIEW V_CHECK
+AS SELECT EMP_ID, EMP_NAME, SALARY, DEPT_CODE
+FROM EMPLOYEE
+WHERE DEPT_CODE='D5' WITH READ ONLY;
+-- VIEW자체에서는 아예 수정을 못하게 막아버릴수도 있다.
+UPDATE V_CHECK SET EMP_NAME  = '김재훈' WHERE EMP_NAME='하이유';
+
+--  SEQUENCE 자동으로 번호를 발생시켜주는 녀어어석
+--어디서 활용할까? 테이블설계할때 무조건 한개테이블에는 한개의 PK컬럼이있다.
+-- 한개의PK컬럼은 중복되면안되구 NULL도안된다. 
+-- PK용컬럼을 만들때 중첩되지않고 기준에따라서 번호를 붙여준다. ㅁㄹ
+
+--  SEQUENCE에 대해 알아보자
+-- 자동번호발급해주는 객체
+-- 기본 SEQUENCE생성하기
+-- CREATE SEQUENCE 시퀀스이름[옵션들];
+-- 기본으로 생성하면 번호가 1부터 1씩증가해서 발급해줌
+-- 1. SEQUENCE번호를 발급하려면 시퀀스명. NEXTVAL을 선언한다.
+CREATE SEQUENCE SEQ_BASIC;
+-- 실행할때마다 자동으로 1씩증가함
+SELECT SEQ_BASIC.NEXTVAL FROM DUAL;
+-- SEQEUNCE 는 중복되지않는 숫자를 발급해주기 때문에 PK컬럼의 값으로 많이 사용한다.
+SELECT * FROM BOARD;
+DESC BOARD;
+
+-- 이제 여러번 등록해도 BOARD_NO는 중복되지않는다. 
+INSERT INTO BOARD VALUES(SEQ_BASIC.NEXTVAL,'첫번째게시글','첫번째','유병승',SYSDATE);
+
+-- 현재 SEQEUNCE 값을 확인하기
+-- 시퀀명.CURRVAL를 이용한다.
+SELECT SEQ_BASIC.CURRVAL FROM DUAL;
+SELECT SEQ_BASIC.NEXTVAL FROM DUAL;
+
+SELECT * FROM BOARD;
+CREATE TABLE ATTACHMENT(
+    ATTACH_NO NUMBER PRIMARY KEY,
+    BOARD_REF NUMBER REFERENCES BOARD(BOARD_NO),
+    FILENAME VARCHAR2(200) NOT NULL
+);    
+
+INSERT INTO BOARD VALUES(SEQ_BASIC.NEXTVAL,'첨부파일게시글','첨부파일있다.','유병승',SYSDATE);
+INSERT INTO ATTACHMENT VALUES(1,SEQ_BASIC.CURRVAL,'내사진.PNG');
+INSERT INTO ATTACHMENT VALUES(2,SEQ_BASIC.CURRVAL,'내사진2.PNG');
+
+SELECT * FROM BOARD;
+SELECT * FROM ATTACHMENT;
+SELECT * FROM BOARD JOIN ATTACHMENT ON BOARD_NO=BOARD_REF;
+
+-- SEQUENCE 옵션값 활용하기
+-- START WITH 숫자 : 설정한 숫자부터 시작 DEFAULT 1 
+-- INCREMENT BY 숫자 :  증가하는 간격을 의미 DEFAULT 1 
+-- MAXVALUE 숫자 : 최대값을 설정
+-- MINVALUE 숫자 : 최소값을 설정
+-- CYCLE/NOCYCLE : 번호를 순환할지 말지 결정하는것 *MAXVALUE,MINVALUE가 설정되어있어야한다.
+-- CACHE : 미리번호를 생성하는 기능 DEFAULT 20
+
+
+SELECT * FROM USER_SEQUENCES;
+
+CREATE SEQUENCE SEQ_01
+START WITH 100;
+SELECT SEQ_01.NEXTVAL FROM DUAL;
+
+CREATE SEQUENCE SEQ_02
+START WITH 100
+INCREMENT BY 10;
+SELECT SEQ_02.NEXTVAL FROM DUAL;
+
+CREATE SEQUENCE SEQ_03
+START WITH 100
+INCREMENT BY -50
+MAXVALUE 200
+MINVALUE 0;
+
+-- 50씩내려가다가 0이하로 내려가면 오류가난다
+SELECT SEQ_03.NEXTVAL FROM DUAL;
+
+CREATE SEQUENCE SEQ_04
+START WITH 100
+INCREMENT BY 50
+MAXVALUE 200
+MINVALUE 0
+CYCLE
+NOCACHE;
+
+-- 0부터 50씩늘어나다가 200이되면 다시0으로 돌아간다.
+SELECT SEQ_04.NEXTVAL FROM DUAL;
+
+-- 1. CURRVAL를 호출하려면 같은 SESSION안에서 NEXTVAL을 한번이라도 호출하고 호출해야한다.
+CREATE SEQUENCE SEQ_05;
+-- 무작정 CURRVAL을 실행하면안된다. NEXTVAL를 실행한후 호출해야함
+SELECT SEQ_05.NEXTVAL,SEQ_05.CURRVAL FROM DUAL;
+
+-- 2. SEQUENCE에 값을 추가해서 PK값으로 쓸 수 있다.
+-- P_001 , M_001
+SELECT 'P_'||LPAD(SEQ_05.NEXTVAL,4,'0') FROM DUAL;
+SELECT TO_CHAR(SYSDATE,'YYYYMMDD')|| '_'||SEQ_05.NEXTVAL FROM DUAL;
+
+-- 오라클에서 제공하는 SELECT문 
+-- 계층형쿼리, 한 테이블에서 연관있는 ROW를 묶어서 출력할 수 있게 해주는 쿼리문 -> ROW순서를 연관있는 자료로 연결해서 출력
+-- 메니저와 연결해서 출력하기
+SELECT LEVEL, EMP_ID, EMP_NAME, MANAGER_ID
+FROM EMPLOYEE
+    START WITH EMP_ID = 200
+    CONNECT BY PRIOR EMP_ID=MANAGER_ID;
+    
+
+SELECT LEVEL || '  '||LPAD('  ',(LEVEL-1)*5,'  ')|| EMP_NAME|| NVL2(MANAGER_ID,'('||MANAGER_ID||')','') AS 조직도    
+FROM EMPLOYEE
+    START WITH EMP_ID = 200
+    CONNECT BY PRIOR EMP_ID = MANAGER_ID;
+
+-- PL/SQL구문에 대해 알아보자
+-- PL/SQL구문을 사용하난 방법
+-- 1. 익명블록을 이용하기 - > BEGIN~END ; / 구문을 사용한다.
+-- 재사용이 불가능하다.
+--2. PROCEDURE, FUNCTION객체로 생성해서 이용 - > OBJECT안에 작성된 PL/SQL
+-- 생성된 OBJECT명으로 재사용이 가능하다.
+
+-- 익명블럭
+-- PL/SQL  구문은 크게 3가지로 나뉜다.
+-- [선언부] :  DECLARE 예약어를 사용 변수, 상수를 선언
+--                      변수선언방법 : 변수명 타입(기본타입,참조타입,ROWTYBE,TABLE,RECODE);
+-- [실행부] : BEGIN 구문작성 END;/  조건문, 반복문 등 실행할 내용에 대해 작성하는 구문
+-- [예외처리부] : 처리할 예외가 있을때 작성하는 구문
+
+-- 프로시저를 사용하여 출력하는 내용을 화면에 보여주도록 설정하는 환경변수로기본 값은 OFF여서 ON으로 변경
+SET SERVEROUTPUT ON; -- 이녀석이 있어야 스크립트 출력창에 문구를 출력할수가있다.
+BEGIN
+    -- 프로시저를 이용해서 출력
+    DBMS_OUTPUT.PUT_LINE('안녕 나의 첫 PL/SQL구문');
+END;
+/
+
+-- 변수활용하기
+-- 변수는 DECLARE부분에 변수명 자료형 형식으로 선언
+--자료형의 종류
+-- 기본자료형  : 오라클에서 제공하는 TYPE들(NUMBER, VARCAHR2,CHAR,DATE....)
+-- 참조형 자료형  : 테이블의 특정컬럼에 설정된 타입을 불러와 사용
+-- ROWTYPE : 테이블의 한개 ROW를 저장할수 있는 타입
+-- 타입을 생성해서 활용
+-- TABLETYPE :  자바의 배열과 비슷한 타입 -> 인덱스번호가 있고 한개타입만 저장이 가능
+-- RECORDE :   자바의 클래스와 비슷한 타입 -> 멤버변수가 있고 다수타입이 저장가능
+
+-- 기본자료형 선언과 이용하기
+-- 변수선언
+DECLARE 
+    V_EMPNO VARCHAR2(20);
+    V_EMPNAME VARCHAR2(15);
+    V_AGE NUMBER := 19;
+BEGIN
+    V_EMPNO:='010224-1234567';
+    V_EMPNAME:='유병승';
+    DBMS_OUTPUT.PUT_LINE(V_EMPNO);
+    DBMS_OUTPUT.PUT_LINE(V_EMPNAME);
+    DBMS_OUTPUT.PUT_LINE(V_AGE);
+END;
+/
+
+-- 참조형자료형이용하기
+
+DECLARE
+-- % 사용하면 EMPLOYEE에있는EMP_ID를가져온다
+    V_EMPID EMPLOYEE.EMP_ID%TYPE;
+-- % 사용하면 EMPLOYEE에있는SALARY를가져온다
+    V_SALARY EMPLOYEE.SALARY%TYPE;
+BEGIN
+    V_EMPID:='200';
+    V_SALARY :=1000000;
+    DBMS_OUTPUT.PUT_LINE(V_EMPID||' : '||V_SALARY);
+    --SQL문과 연동하여 처리하기 
+    SELECT EMP_ID, SALARY
+    INTO V_EMPID,V_SALARY
+    FROM EMPLOYEE
+    WHERE EMP_ID = V_EMPID;
+    DBMS_OUTPUT.PUT_LINE(V_EMPID||' ' ||V_SALARY);
+END;
+/
+
+-- ROWTYPE
+DECLARE 
+    V_EMP EMPLOYEE%ROWTYPE;
+    V_DEPT DEPARTMENT%ROWTYPE;
+BEGIN
+    SELECT * 
+    INTO V_EMP
+    FROM EMPLOYEE
+    WHERE EMP_ID= '&사원번호';
+    -- ROWTYPE의 각 컬럼을 출력하려면  .연산자를 이용해서 컬럼명으로 접근한다.
+    DBMS_OUTPUT.PUT_LINE(V_EMP.EMP_ID||' '||V_EMP.EMP_NAME||' '||V_EMP.SALARY||' '||V_EMP.BONUS);
+    SELECT *
+    INTO V_DEPT
+    FROM DEPARTMENT
+    WHERE DEPT_ID = V_EMP.DEPT_CODE;
+    DBMS_OUTPUT.PUT_LINE(V_DEPT.DEPT_ID||' '||V_DEPT.DEPT_TITLE||' '||V_DEPT.LOCATION_ID);
+END;
+/
+
+-- 생성해서 사용하는 타입
+-- 테이블타입
+DECLARE
+    TYPE EMP_ID_TABLE IS TABLE OF EMPLOYEE.EMP_ID%TYPE
+    -- 배열이니간 인데스바필요
+    INDEX BY BINARY_INTEGER;
+--      변수명         타입
+    MYTABLE_ID EMP_ID_TABLE;
+    I BINARY_INTEGER := 0;
+BEGIN
+    MYTABLE_ID(1):= '100';
+    MYTABLE_ID(2):= '200';
+    MYTABLE_ID(3):= '300';
+    DBMS_OUTPUT.PUT_LINE(MYTABLE_ID(1));
+    DBMS_OUTPUT.PUT_LINE(MYTABLE_ID(2));
+    DBMS_OUTPUT.PUT_LINE(MYTABLE_ID(3));
+    
+    FOR K IN (SELECT EMP_ID FROM EMPLOYEE) LOOP
+        I := I+1;
+        MYTABLE_ID(I) :=K.EMP_ID;
+    END LOOP;
+    FOR J IN 1..I LOOP
+        DBMS_OUTPUT.PUT_LINE(MYTABLE_ID(J));
+    END LOOP;        
+END;
+/
+
+-- RECORD 타입활용하기
+-- 클래스와 유사
+DECLARE
+    TYPE MYRECORD IS RECORD(
+            ID EMPLOYEE.EMP_ID%TYPE,
+            NAME EMPLOYEE.EMP_NAME%TYPE,
+            DEPTTITLE DEPARTMENT.DEPT_TITLE%TYPE,
+            JOBNAME JOB.JOB_NAME%TYPE
+        );
         
-SELECT * FROM EMP_M1;      
+        MYDATA MYRECORD;
+BEGIN
+    SELECT EMP_ID,EMP_NAME,DEPT_TITLE,JOB_NAME
+    INTO MYDATA
+    FROM EMPLOYEE 
+        JOIN DEPARTMENT ON DEPT_CODE=DEPT_ID
+        JOIN JOB USING(JOB_CODE)
+    WHERE EMP_NAME = '&사원명';
+    DBMS_OUTPUT.PUT_LINE(MYDATA.ID||MYDATA.NAME||MYDATA.DEPTTITLE||MYDATA.JOBNAME);
+END;
+/
+
+-- PL/SQL구문에서 조건문 활용하기
+-- IF문 활용
+-- IF 조건식 
+--      THEN : 조건식이 TRUE일때  THEN에 있는 구문이 실행됨. 
+--    END IF;
+
+DECLARE 
+    V_SALARY EMPLOYEE.SALARY%TYPE;
+BEGIN
+    SELECT SALARY
+    INTO V_SALARY
+    FROM EMPLOYEE
+    WHERE EMP_ID='&사원번호';
+    
+    IF V_SALARY>3000000
+        THEN DBMS_OUTPUT.PUT_LINE('많이 받으시네요!');
+    END IF;
+END;
+/
+
+-- IF 
+--      THEN 실행구문 
+--      ELSE  실행구문
+--  END IF;
+
+DECLARE
+    V_SALARY EMPLOYEE.SALARY%TYPE;
+BEGIN
+    SELECT SALARY
+    INTO V_SALARY
+    FROM EMPLOYEE
+    WHERE EMP_NAME = '&사원명';
+    IF V_SALARY>3000000
+        THEN DBMS_OUTPUT.PUT_LINE('많이받으시네요!');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('보통이시네요!');
+    END IF;
+END;
+/
+
+CREATE TABLE HIGH_SAL(
+    EMP_ID VARCHAR2(20) REFERENCES EMPLOYEE(EMP_ID),
+    SALARY NUMBER
+);    
+
+
+CREATE TABLE LOW_SAL(
+    EMP_ID VARCHAR2(20) REFERENCES EMPLOYEE(EMP_ID),
+    SALARY NUMBER
+);    
+
+DECLARE
+    EMPID EMPLOYEE.EMP_ID%TYPE;
+    SALARY EMPLOYEE.SALARY%TYPE;
+BEGIN 
+    SELECT EMP_ID,SALARY
+    INTO EMPID,SALARY
+    FROM EMPLOYEE
+    WHERE EMP_NAME = '&사원명';
+    
+    IF SALARY>3000000
+            THEN INSERT INTO HIGH_SAL VALUES(EMPID,SALARY);
+        ELSE
+            INSERT INTO LOW_SAL VALUES(EMPID,SALARY);
+        END IF;
+     COMMIT;   
+END;
+/
+
+SELECT * FROM HIGH_SAL;
+SELECT * FROM LOW_SAL;
+
+-- IF 조건식 THEN ELSIF 조건식 THEN ELSE END IF;
+CREATE TABLE MSGTEST(
+    EMP_ID VARCHAR2(20) REFERENCES EMPLOYEE(EMP_ID),
+    MSG VARCHAR2(100)
+);
+
+DECLARE
+    V_EMP_ID EMPLOYEE.EMP_ID%TYPE;
+    V_JOBCODE EMPLOYEE.JOB_CODE%TYPE;
+    MSG VARCHAR2(100);
+BEGIN
+    SELECT EMP_ID, JOB_CODE
+    INTO V_EMP_ID,V_JOBCODE
+    FROM EMPLOYEE
+    WHERE EMP_ID='&사원번호';
+    
+    IF V_JOBCODE = 'J1'
+        THEN   MSG:='대표이사';
+    ELSIF V_JOBCODE IN ('J2','J3','J4')
+        THEN MSG := '임원';
+    ELSE MSG :='사원';
+    END IF;
+    INSERT INTO MSGTEST VALUES(V_EMP_ID,MSG);
+    COMMIT;
+END;
+/
+
+SELECT * FROM MSGTEST JOIN EMPLOYEE USING(EMP_ID);
+
+-- CASE문 이용하기
+DECLARE
+    NUM NUMBER;
+BEGIN
+    NUM:='&수';
+    CASE
+        WHEN NUM>10
+            THEN DBMS_OUTPUT.PUT_LINE('10초과');
+            WHEN NUM>5
+                THEN DBMS_OUTPUT.PUT_LINE('10~5사이값');
+            ELSE DBMS_OUTPUT.PUT_LINE('5이하의 값입니다.');
+    END CASE;            
+END;
+/
+
+-- 반복문사용하기
+-- 기본반복문 LOOP 예약어를 이용
+-- FOR, WHILE문이 있음.
+DECLARE
+    NUM NUMBER := 1;
+    RNDNUM NUMBER;
+BEGIN
+    LOOP
+            DBMS_OUTPUT.PUT_LINE(NUM);
+            -- 오라클에서 램덤값 출력하기
+            RNDNUM:=FLOOR(DBMS_RANDOM.VALUE(1,10));
+            DBMS_OUTPUT.PUT_LINE(RNDNUM);
+            INSERT INTO BOARD VALUES(SEQ_BASIC.NEXTVAL,'제목'||RNDNUM,'CONTENT'||RNDNUM,'작성자'||RNDNUM,SYSDATE);
+            NUM:=NUM+1;
+            IF NUM>100
+                THEN EXIT; -- BREAK문과 동일하다.
+        END IF;                
+    END LOOP;
+    COMMIT;
+END;
+/
+SELECT *FROM BOARD;
+        
+        
+-- WHILE문
+-- WHILE 조건문  LOOP
+--  실행구문
+-- END LOOP;
+
+DECLARE
+    NUM NUMBER :=1;
+BEGIN
+    WHILE NUM<=10 LOOP
+    DBMS_OUTPUT.PUT_LINE(NUM);
+    NUM:=NUM+1;
+    END LOOP;
+END;
+/
+
+-- FOR 변수 IN 범위(시작..끝) LOOP
+-- END LOOP;
+
+BEGIN
+    FOR N  IN 1..10 LOOP
+        DBMS_OUTPUT.PUT_LINE(N);
+    END LOOP;
+END;
+/
+
+--FOR 변수 IN (SELECT문) LOOP
+-- END LOOP;
+
+BEGIN
+        FOR EMP IN (SELECT * FROM EMPLOYEE) LOOP
+                -- DBMS_OUTPUT.PUT_LINE(EMP.EMP_ID||EMP.EMP_NAME||EMP.SALARY||EMP.DEPT_CODE||EMP.JOB_CODE);
+                    IF EMP.SALARY>3000000
+                        THEN INSERT INTO HIGH_SAL VALUES(EMP.EMP_ID,EMP.SALARY);
+                    ELSE INSERT INTO LOW_SAL VALUES(EMP.EMP_ID,EMP.SALARY);
+                    END IF;
+                    COMMIT;
+                END LOOP;
+END;
+/
+
+SELECT * FROM HIGH_SAL;
+SELECT * FROM LOW_SAL;
+
+-- PL/SQL구문저장하고 사용하기
+-- PROCEDURE, FUNCTION
+-- PROCEDURE
+-- CREATE PROCEDURE 프로시져명
+-- IS
+-- 변수선언(필요하다면.....)
+-- BEGIN
+--  실행할 로직
+-- END;
+-- /
+-- 저장된 프로시저 실행하기
+-- EXEC 프로시저명
+CREATE TABLE EMP_DEL
+AS SELECT * FROM EMPLOYEE;
+SELECT * FROM EMP_DEL;
+CREATE OR REPLACE PROCEDURE EMP_DEL_PRO
+IS
+BEGIN
+        DELETE FROM EMP_DEL;
+        COMMIT;
+END;
+/
+EXEC EMP_DEL_PRO;
+SELECT * FROM EMP_DEL;
+CREATE OR REPLACE PROCEDURE EMP_INSERT
+IS
+BEGIN
+    FOR EMP IN (SELECT * FROM EMPLOYEE) LOOP
+        INSERT INTO EMP_DEL 
+        VALUES(EMP.EMP_ID,EMP.EMP_NAME,EMP.EMP_NO,EMP.EMAIL,EMP.PHONE,EMP.DEPT_CODE,EMP.JOB_CODE,EMP.SAL_LEVEL,EMP.SALARY,EMP.BONUS,EMP.MANAGER_ID,EMP.HIRE_DATE,EMP.ENT_DATE,EMP.ENT_YN);
+    END LOOP;
+    COMMIT;
+END;
+/
+EXEC EMP_INSERT;
+SELECT * FROM EMP_DEL;
+EXEC EMP_DEL_PRO;
+
+
+-- 프로시저의 매개변수 활용하기
+-- IN매개변수 :  프로시저실행시에 필요한 데이터를 받는 매개변수 * 일반적인 매개변수
+-- OUT매개변수 :  호출한 곳에서 지정한 변수에 데이터를 대입해주는 매개변수를 의미함
+
+CREATE OR REPLACE PROCEDURE PRO_SELECT_EMP(V_EMPID IN EMPLOYEE.EMP_ID%TYPE,V_EMPNAME OUT EMPLOYEE.EMP_NAME%TYPE)
+IS
+    TEST VARCHAR2(20);
+BEGIN
+    SELECT EMP_NAME
+    INTO V_EMPNAME
+    FROM EMPLOYEE
+    WHERE EMP_ID = V_EMPID;
+END;
+/
+
+-- 전역변수선언
+VAR EMP_NAME VARCHAR2(20);
+PRINT EMP_NAME;
+EXEC PRO_SELECT_EMP(201,:EMP_NAME);
+PRINT EMP_NAME;
+
+-- FUNCTION 오브젝트
+-- 함수 : 매개변수, 리턴값을 갖는다.
+-- SELECT문 내부에서 실행함.
+-- CREATE FUNCTION 함수명([ 매개변수선언])
+-- RETURN 리턴타입
+-- IS
+-- [변수선언]
+-- BEGIN
+--  실행할 로직
+-- END;
+-- /
+-- 매개변수로 받은 문자열의 길이를 반환해주는 함수
+CREATE OR REPLACE FUNCTION MYFUNC(V_STR VARCHAR2)
+RETURN NUMBER
+IS 
+    V_RESULT NUMBER;
+BEGIN
+        SELECT LENGTH(V_STR)
+        INTO V_RESULT
+        FROM DUAL;
+        RETURN V_RESULT;
+END;
+/
+
+SELECT MYFUNC('유병승')
+FROM DUAL;
+SELECT MYFUNC(EMAIL)
+FROM EMPLOYEE;
+
+-- 매개변수로 EMP_ID를 받아서 연봉을 계산해주는 함수를 만들기
+CREATE OR REPLACE FUNCTION SAL_YEAR(V_EMPID EMPLOYEE.EMP_ID%TYPE)
+RETURN NUMBER
+IS
+        V_RESULT NUMBER;
+BEGIN
+    SELECT SALARY*12
+    INTO V_RESULT
+    FROM EMPLOYEE
+    WHERE EMP_ID=V_EMPID;
+    RETURN V_RESULT;
+END;
+/
+SELECT SAL_YEAR(200) FROM DUAL;
+SELECT EMP_NAME, SALARY,BONUS,SAL_YEAR(EMP_ID)
+FROM EMPLOYEE;
+
+-- 신입사원이 추가되면 신입사원이 입사하였습니다. 출력하는 트리거
+CREATE OR REPLACE TRIGGER TRG_01
+AFTER INSERT ON EMPLOYEE
+FOR EACH ROW
+BEGIN
+        -- 트리거 실행시 새로입력한값, 이전값에 대해 출력할 수 있음
+        -- INSERT : 새로운값(O), 이전값(X)
+        -- UPDATE : 새로운값(O), 이전값(O)
+        -- DELETE :  새로운값(X) , 이전값(O)
+        -- 새로운값 :  : NEW.컬럼명
+        -- 이전값 :  :OLD.컬럼명
+        DBMS_OUTPUT.PUT_LINE('신입사원이'||:NEW.EMP_NAME ||' 입사하였습니다.');
+END;
+/
+INSERT INTO EMPLOYEE VALUES('993','최솔','970105-1234567','CHOI@CHOIK.COM','01012341234','D3','J1',
+    'S1',10,0.5,200,SYSDATE,NULL,DEFAULT);
+    
+    
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
